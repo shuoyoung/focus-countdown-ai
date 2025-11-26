@@ -1,0 +1,37 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch: # Allows manual trigger from Actions tab
+  push:
+    branches: [ "main" ] # Also trigger on push to main (optional)
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          # Removed cache: 'npm' to avoid "Dependencies lock file is not found" error
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build React App and Electron App
+        # electron-builder requires GH_TOKEN to publish, but for local artifacts it's fine.
+        # We run the build script defined in package.json
+        run: npm run electron:build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FocusCountdown-Windows
+          path: dist/*.exe
+          retention-days: 5

@@ -1,0 +1,44 @@
+{
+  "name": "focus-countdown-desktop",
+  "version": "1.0.0",
+  "main": "electron-main.js",
+  "author": "Focus Countdown Team",
+  "description": "A lightweight desktop countdown timer for students.",
+  "homepage": "./",
+  "dependencies": {
+    "@google/genai": "*",
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.1.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "electron:dev": "concurrently \"npm start\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "npm run build && electron-builder -w"
+  },
+  "build": {
+    "appId": "com.focus.countdown",
+    "productName": "Focus Countdown",
+    "files": [
+      "dist/**/*",
+      "electron-main.js"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "public/favicon.ico"
+    }
+  }
+}

@@ -1,11 +1,72 @@
-<div align="center">
+# 中考/高考桌面倒计时 (Focus Countdown)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+这是一个基于 **React** 构建，并通过 **Electron** 封装的 Windows 桌面倒计时应用。它旨在为学生和老师提供一个美观、不打扰的桌面常驻组件，支持高考、中考及自定义考试倒计时。
 
-  <h1>Built with AI Studio</h2>
+## ✨ 主要功能
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+*   **多类型支持**: 内置高考、中考逻辑，支持自定义任何考试日期。
+*   **极简设计**: 透明背景、无边框设计，完美融入桌面壁纸。
+*   **防打扰**: 支持“点击穿透”模式和位置锁定，不影响日常电脑操作。
+*   **个性化**: 可调节字体大小、颜色、背景透明度。
+*   **AI 激励**: 集成 Google Gemini API，每日或随机提供备考励志语录（需配置 API Key）。
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## 🛠️ 开发环境准备
 
-</div>
+在开始之前，请确保您的电脑已安装 **Node.js** (推荐 v16 或更高版本)。
+
+1.  **下载代码**: 将本项目所有文件下载到本地文件夹。
+2.  **安装依赖**: 在项目根目录下打开终端（CMD 或 PowerShell），运行：
+
+    ```bash
+    npm install
+    ```
+
+## 🚀 运行与调试
+
+### 1. 网页版调试
+如果您只想调试 UI 界面：
+```bash
+npm start
+```
+这将启动浏览器并在 `http://localhost:3000` 运行应用。
+
+### 2. 桌面版调试 (Electron)
+如果您想预览其在 Windows 窗口中的效果：
+```bash
+npm run electron:dev
+```
+
+## ☁️ GitHub Actions 自动构建 (推荐)
+
+本项目已配置 GitHub Actions，您可以直接在 GitHub 上构建 Windows 安装包，无需本地配置环境。
+
+1.  **上传代码**: 将代码推送到您的 GitHub 仓库。
+2.  **进入 Actions**: 点击仓库顶部的 **Actions** 标签页。
+3.  **选择 Workflow**: 在左侧菜单选择 **Build Windows App**。
+4.  **手动触发**: 点击右侧的 **Run workflow** 按钮。
+5.  **下载软件**:
+    *   等待构建完成（图标变绿）。
+    *   点击该次构建记录。
+    *   在页面底部的 **Artifacts** 区域，点击 **FocusCountdown-Windows** 进行下载。
+    *   解压下载的 zip 文件，即可获得 `.exe` 可执行程序。
+
+## 📦 本地打包 (手动)
+
+如果您想在本地生成 `.exe`：
+
+1.  **执行打包命令**:
+    ```bash
+    npm run electron:build
+    ```
+2.  **获取软件**:
+    命令运行完成后，打开 `dist` 文件夹，即可找到 `Focus Countdown 1.0.0.exe`。
+
+## ⚙️ 配置说明
+
+### API Key (AI 功能)
+如果您希望使用 AI 自动生成励志语录，请在打包前或运行前设置环境变量 `API_KEY`。在没有 API Key 的情况下，软件会使用内置的本地语录库，功能不受影响。
+
+## ⚠️ 常见问题
+
+*   **窗口置顶问题**: 模拟器（网页版）无法真正控制 Windows 窗口置顶，请使用 `npm run electron:dev` 或打包后测试此功能。
+*   **点击穿透**: 在开启“点击穿透”模式后，鼠标将无法点击软件。如果需要修改设置，通常需要通过托盘图标（如果已实现）或重启软件来恢复交互。在当前版本中，我们在 UI 上保留了一个小的解锁按钮区域用于恢复。
