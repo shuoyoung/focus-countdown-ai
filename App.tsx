@@ -1,20 +1,24 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Exam, WidgetSettings, Quote, Position, DisplayMode, ThemeColor } from './types';
+import { Exam, WidgetSettings, Quote, Position } from './types';
 import { DEFAULT_EXAMS, DEFAULT_SETTINGS, DEFAULT_QUOTES } from './constants';
 import WidgetDisplay from './components/WidgetDisplay';
 import SettingsPanel from './components/SettingsPanel';
 
-// Background Image for Simulation
+// Background Image for Simulation (Only used in Web Mode)
 const WALLPAPER_URL = "https://picsum.photos/1920/1080?blur=2";
 
 const App: React.FC = () => {
+  // --- DETECT ENVIRONMENT ---
+  const isElectron = navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+  const ipcRenderer = isElectron ? (window as any).require('electron').ipcRenderer : null;
+
   // --- STATE ---
   const [exams, setExams] = useState<Exam[]>(() => {
     const saved = localStorage.getItem('fc_exams');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Migration: Remove Pinyin if it exists in previously saved default exams
         return parsed.map((e: Exam) => {
           if (e.id === 'gaokao' && e.name.includes('(Gaokao)')) return { ...e, name: '高考' };
           if (e.id === 'zhongkao' && e.name.includes('(Zhongkao)')) return { ...e, name: '中考' };
@@ -31,7 +35,6 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('fc_settings');
     if (saved) {
         const parsed = JSON.parse(saved);
-        // Merge with default settings to ensure new properties (quoteSource, customQuotes) exist if missing
         return { ...DEFAULT_SETTINGS, ...parsed };
     }
     return DEFAULT_SETTINGS;
@@ -67,13 +70,19 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('fc_position', JSON.stringify(position)), [position]);
   useEffect(() => localStorage.setItem('fc_current_quote', JSON.stringify(quote)), [quote]);
 
+  // --- ELECTRON EFFECTS ---
+  useEffect(() => {
+    if (isElectron && ipcRenderer) {
+      ipcRenderer.send('set-always-on-top', settings.alwaysOnTop);
+    }
+  }, [settings.alwaysOnTop, isElectron, ipcRenderer]);
 
   // --- HANDLERS ---
   const activeExam = exams.find(e => e.id === selectedExamId) || exams[0];
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent drag if locked, clicking buttons, or settings are open
     if (settings.isLocked || isSettingsOpen) return;
+    // Don't drag if clicking a button
     if ((e.target as HTMLElement).closest('button')) return;
 
     setIsDragging(true);
@@ -89,7 +98,6 @@ const App: React.FC = () => {
     const newX = e.clientX - dragOffset.current.x;
     const newY = e.clientY - dragOffset.current.y;
 
-    // Simple boundary check (optional, but good for UX)
     setPosition({ x: newX, y: newY });
   };
 
@@ -101,38 +109,71 @@ const App: React.FC = () => {
     setSettings(prev => ({ ...prev, isLocked: !prev.isLocked }));
   };
 
+  // --- ELECTRON MOUSE PASSTHROUGH LOGIC ---
+  // When mouse enters the widget or settings, we capture events.
+  // When mouse leaves, we let them pass through to desktop.
+  const handleMouseEnterWidget = () => {
+    if (isElectron && ipcRenderer) {
+      ipcRenderer.send('set-ignore-mouse-events', false);
+    }
+  };
+
+  const handleMouseLeaveWidget = () => {
+    if (isElectron && ipcRenderer) {
+      // If we are dragging or settings are open, do NOT let mouse pass through
+      if (!isDragging && !isSettingsOpen) {
+        ipcRenderer.send('set-ignore-mouse-events', true, { forward: true });
+      }
+    }
+  };
+
+  // If settings open, always capture
+  useEffect(() => {
+    if (isElectron && ipcRenderer) {
+        if (isSettingsOpen) {
+             ipcRenderer.send('set-ignore-mouse-events', false);
+        } else {
+             // Reset to pass-through if not hovering (handled by mouse leave)
+             // But we need to ensure we don't get stuck in capture mode
+             // We rely on the MouseLeave of the widget container
+        }
+    }
+  }, [isSettingsOpen, isElectron, ipcRenderer]);
+
   // --- RENDER ---
   return (
     <div 
-      className="relative w-screen h-screen overflow-hidden select-none font-sans text-gray-900"
+      className={`relative w-screen h-screen overflow-hidden select-none font-sans ${isElectron ? 'bg-transparent' : ''}`}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
     >
-      {/* 1. Simulated Desktop Background */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${WALLPAPER_URL})` }}
-      />
-      <div className="absolute inset-0 bg-black/20 pointer-events-none z-0" />
+      {/* 1. Wallpaper: Only show in Web Mode, strictly hidden in Electron */}
+      {!isElectron && (
+        <>
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
+            style={{ backgroundImage: `url(${WALLPAPER_URL})` }}
+          />
+          <div className="absolute inset-0 bg-black/20 pointer-events-none z-0" />
+          <div className="absolute bottom-8 left-8 z-0 text-white/50 text-xs pointer-events-none">
+            <p>Focus Countdown Web Simulator</p>
+          </div>
+        </>
+      )}
 
-      {/* 2. Instructions Overlay (For demo purposes) */}
-      <div className="absolute bottom-8 left-8 z-0 text-white/50 text-xs pointer-events-none">
-        <p>Focus Countdown MVP v1.0</p>
-        <p>Simulating Windows Desktop Widget Environment</p>
-      </div>
-
-      {/* 3. The Widget */}
+      {/* 
+        2. The Widget Container 
+        This is the interaction zone. 
+      */}
       <div
         className={`absolute z-10 ${settings.isLocked ? '' : 'cursor-move'}`}
         style={{ 
           left: position.x, 
           top: position.y,
-          // If click-through is enabled, the container ignores pointer events, 
-          // but we need a wrapper to catch the click for the 'Unlock' mechanism if we were building the native app.
-          // For this web demo, we handle logic inside WidgetDisplay.
         }}
         onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnterWidget}
+        onMouseLeave={handleMouseLeaveWidget}
       >
         <WidgetDisplay 
           settings={settings}
@@ -144,18 +185,28 @@ const App: React.FC = () => {
         />
       </div>
 
-      {/* 4. Settings Modal */}
-      <SettingsPanel 
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
-        onSettingsChange={setSettings}
-        exams={exams}
-        onExamsChange={setExams}
-        selectedExamId={selectedExamId}
-        onSelectExam={setSelectedExamId}
-      />
-
+      {/* 
+        3. Settings Modal 
+        Rendered absolutely in the center of the screen (overlay).
+      */}
+      {isSettingsOpen && (
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            // Ensure mouse events are captured when settings are open
+            onMouseEnter={handleMouseEnterWidget} 
+        >
+             <SettingsPanel 
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                settings={settings}
+                onSettingsChange={setSettings}
+                exams={exams}
+                onExamsChange={setExams}
+                selectedExamId={selectedExamId}
+                onSelectExam={setSelectedExamId}
+            />
+        </div>
+      )}
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 export enum DisplayMode {
   Standard = 'STANDARD',
   Minimal = 'MINIMAL',
@@ -24,8 +25,10 @@ export interface Exam {
 
 export interface WidgetSettings {
   displayMode: DisplayMode;
+  cardWidth: number; // px
   fontSizeScale: number; // 0.5 to 2.0
   textColor: ThemeColor;
+  backgroundColor: string; // hex
   bgOpacity: number; // 0 to 100
   showDate: boolean;
   showQuote: boolean;
@@ -33,6 +36,7 @@ export interface WidgetSettings {
   customQuotes: Quote[];
   isLocked: boolean; // Position locked
   isClickThrough: boolean; // Visual simulation of click-through
+  alwaysOnTop: boolean; // Electron only
   quoteUpdateFreq: 'daily' | 'random';
 }
 

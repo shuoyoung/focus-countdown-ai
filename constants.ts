@@ -1,3 +1,4 @@
+
 import { Exam, Quote, ThemeColor, DisplayMode, WidgetSettings } from './types';
 
 export const DEFAULT_QUOTES: Quote[] = [
@@ -10,8 +11,10 @@ export const DEFAULT_QUOTES: Quote[] = [
 
 export const DEFAULT_SETTINGS: WidgetSettings = {
   displayMode: DisplayMode.Standard,
+  cardWidth: 320,
   fontSizeScale: 1,
   textColor: ThemeColor.White,
+  backgroundColor: '#000000',
   bgOpacity: 20,
   showDate: true,
   showQuote: true,
@@ -21,6 +24,7 @@ export const DEFAULT_SETTINGS: WidgetSettings = {
   ],
   isLocked: false,
   isClickThrough: false,
+  alwaysOnTop: true,
   quoteUpdateFreq: 'daily',
 };
 
