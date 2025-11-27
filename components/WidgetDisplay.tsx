@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { WidgetSettings, Exam, DisplayMode, Quote } from '../types';
 import { Settings, Lock, Unlock, Sparkles, RefreshCw } from 'lucide-react';
@@ -12,6 +11,7 @@ interface WidgetDisplayProps {
   onOpenSettings: () => void;
   onToggleLock: () => void;
   onUpdateQuote: (q: Quote) => void;
+  isElectron?: boolean;
 }
 
 const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
@@ -20,7 +20,8 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
   quote,
   onOpenSettings,
   onToggleLock,
-  onUpdateQuote
+  onUpdateQuote,
+  isElectron = false
 }) => {
   const [daysLeft, setDaysLeft] = useState<number>(0);
   const [loadingQuote, setLoadingQuote] = useState(false);
@@ -29,9 +30,12 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
   useEffect(() => {
     const calculateTime = () => {
       const now = new Date();
+      // Normalize today to 00:00:00
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
       const examDate = new Date(exam.date);
-      const examDateStart = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate() + 1);
+      // Target date at 00:00:00
+      const examDateStart = new Date(examDate.getFullYear(), examDate.getMonth(), examDate.getDate());
 
       const diffTime = examDateStart.getTime() - todayStart.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -75,13 +79,15 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
     return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '0,0,0';
   };
 
-  const containerStyle: React.CSSProperties = {
+  const containerStyle: any = {
     backgroundColor: `rgba(${hexToRgb(settings.backgroundColor || '#000000')}, ${settings.bgOpacity / 100})`,
     backdropFilter: settings.bgOpacity > 0 ? 'blur(8px)' : 'none',
     transform: `scale(${settings.fontSizeScale})`,
     transformOrigin: 'top left',
     width: `${settings.cardWidth}px`, 
     maxWidth: `${settings.cardWidth}px`,
+    // Enable CSS dragging for Electron if not locked
+    WebkitAppRegion: isElectron && !settings.isLocked ? 'drag' : 'no-drag',
   };
 
   const isMinimal = settings.displayMode === DisplayMode.Minimal;
@@ -89,21 +95,13 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
   return (
     <div className="relative group">
       
-      {/* 
-        MAIN CONTENT
-        isClickThrough: if true, this layer ignores pointer events.
-        BUT the parent container in App.tsx handles the electron mouse forwarding.
-        This 'pointer-events-none' is mainly for the visual feel in web mode or 
-        ensuring clicks pass through to potential elements behind it if we weren't using the Electron mask.
-      */}
+      {/* MAIN CONTENT CARD */}
       <div
-        className={`rounded-xl transition-all duration-300 overflow-hidden ${
-          settings.isClickThrough ? 'pointer-events-none' : ''
-        }`}
+        className="rounded-xl transition-all duration-300 overflow-hidden shadow-2xl"
         style={containerStyle}
       >
         <div className={`flex flex-col items-center justify-center ${isMinimal ? 'p-3' : 'px-6 py-5'}`}>
-          {/* Exam Name - Forced wrap */}
+          {/* Exam Name */}
           <h2 className={`font-serif font-bold tracking-wide opacity-90 text-center w-full whitespace-pre-wrap break-words ${settings.textColor} ${isMinimal ? 'text-lg' : 'text-xl mb-1'}`}>
             {exam.name}
           </h2>
@@ -127,7 +125,6 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
                   
                   {settings.showQuote && quote && (
                       <div className={`mt-4 pt-4 border-t border-white/10 w-full text-center ${settings.textColor}`}>
-                          {/* Quote Text - Enforce wrapping so it doesn't break fixed width */}
                           <p className="text-xs font-serif italic leading-relaxed opacity-90 whitespace-pre-wrap break-words">
                             "{quote.text}"
                           </p>
@@ -139,16 +136,19 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
       </div>
 
       {/* 
-        CONTROLS HITBOX 
-        This is absolutely positioned relative to the widget.
-        It must ALWAYS be clickable (pointer-events-auto), even if the widget body is pass-through.
+        CONTROLS
+        Positioned top-right.
+        Must have 'no-drag' to allow clicking in Electron.
       */}
       <div 
-        className="absolute -top-3 -right-3 p-4 z-50 flex gap-1.5 opacity-0 hover:opacity-100 transition-opacity duration-200"
-        style={{ pointerEvents: 'auto' }} 
+        className="absolute -top-3 -right-3 p-4 z-[9999] flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        style={{ 
+            pointerEvents: 'auto',
+            WebkitAppRegion: 'no-drag' 
+        } as any} 
       >
         {/* Visual Pill Background */}
-        <div className="absolute inset-2 bg-black/60 backdrop-blur-md rounded-full -z-10 shadow-lg border border-white/10"></div>
+        <div className="absolute inset-3 bg-black/60 backdrop-blur-md rounded-full -z-10 shadow-lg border border-white/10"></div>
 
         <div className="flex gap-1 items-center justify-center relative z-10">
           {!isMinimal && settings.showQuote && (

@@ -1,25 +1,22 @@
-
 const { app, BrowserWindow, screen, ipcMain } = require('electron');
 const path = require('path');
 
 let mainWindow;
 
 function createWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-
   mainWindow = new BrowserWindow({
-    width: width,
-    height: height,
-    x: 0,
-    y: 0,
+    width: 350, 
+    height: 300,
+    minWidth: 200, // Prevent window from becoming too small and "disappearing"
+    minHeight: 150,
+    center: true, // Force center on startup to avoid off-screen positioning
     frame: false,
     transparent: true,
-    backgroundColor: '#00000000', // Completely transparent
+    backgroundColor: '#00000000', // Start transparent, React adds the 1% hit-layer
     hasShadow: false,
-    alwaysOnTop: true, // Default
-    resizable: false, // Fixed to screen size
-    movable: false, // The window itself doesn't move, the content does
-    skipTaskbar: true, // Don't clutter taskbar
+    alwaysOnTop: true, 
+    resizable: false, 
+    skipTaskbar: true, 
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -27,10 +24,6 @@ function createWindow() {
     },
     icon: path.join(__dirname, 'public/favicon.ico') 
   });
-
-  // Start by ignoring mouse events (letting them pass through to desktop)
-  // forward: true is essential for tracking mouse movement over the transparent window
-  mainWindow.setIgnoreMouseEvents(true, { forward: true });
 
   mainWindow.loadURL(
     `file://${path.join(__dirname, 'dist/index.html')}`
@@ -59,13 +52,18 @@ ipcMain.on('close-app', () => {
   app.quit();
 });
 
-// Allow React to control when the window ignores mouse events
-// ignore: true = Click through to desktop
-// ignore: false = Capture clicks (interact with widget)
-ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
+ipcMain.on('app-relaunch', () => {
+  app.relaunch();
+  app.exit(0);
+});
+
+ipcMain.on('resize-window', (event, { width, height }) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
-    win.setIgnoreMouseEvents(ignore, options);
+    // Ensure we don't resize smaller than min dimensions
+    const finalWidth = Math.max(width, 200);
+    const finalHeight = Math.max(height, 150);
+    win.setSize(finalWidth, finalHeight);
   }
 });
 

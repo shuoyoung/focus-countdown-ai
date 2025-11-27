@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { WidgetSettings, Exam, ThemeColor, DisplayMode, Quote } from '../types';
 import { X, Plus, Trash2, RotateCcw, Monitor } from 'lucide-react';
@@ -12,6 +11,7 @@ interface SettingsPanelProps {
   onExamsChange: (newExams: Exam[]) => void;
   selectedExamId: string;
   onSelectExam: (id: string) => void;
+  isEmbedded?: boolean; // If true, renders as a standalone card (no modal overlay)
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -23,6 +23,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onExamsChange,
   selectedExamId,
   onSelectExam,
+  isEmbedded = false
 }) => {
   const [activeTab, setActiveTab] = useState<'exams' | 'appearance' | 'quotes' | 'advanced'>('exams');
   const [newExamName, setNewExamName] = useState('');
@@ -69,19 +70,33 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     updateSetting('customQuotes', updated);
   };
 
+  // Outer container class: If embedded, standard width/height; if modal, fixed overlay
+  const containerClass = isEmbedded 
+    ? "w-[340px] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col h-[400px]" 
+    : "w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <h2 className="text-lg font-bold text-gray-800">Settings</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+    <div className={containerClass}>
+        {/* Header - Draggable in Electron */}
+        <div 
+          className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0"
+          style={{ WebkitAppRegion: 'drag' } as any}
+        >
+          <h2 className="text-lg font-bold text-gray-800 select-none">Settings</h2>
+          <button 
+            onClick={onClose} 
+            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+            style={{ WebkitAppRegion: 'no-drag' } as any}
+          >
             <X size={20} className="text-gray-600" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-100 overflow-x-auto">
+        {/* Tabs - No Drag */}
+        <div 
+          className="flex border-b border-gray-100 overflow-x-auto shrink-0"
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+        >
           {(['exams', 'appearance', 'quotes', 'advanced'] as const).map((tab) => (
             <button
               key={tab}
@@ -97,8 +112,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Content - No Drag */}
+        <div 
+          className="flex-1 overflow-y-auto p-5 space-y-6"
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+        >
           
           {/* EXAMS TAB */}
           {activeTab === 'exams' && (
@@ -146,7 +164,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     placeholder="Name"
                     value={newExamName}
                     onChange={(e) => setNewExamName(e.target.value)}
-                    className="w-full p-2 text-sm text-gray-900 border border-blue-200 rounded focus:outline-none focus:border-blue-400 placeholder-gray-400"
+                    className="w-full p-2 text-sm text-gray-900 border border-blue-200 rounded focus:outline-none focus:border-blue-400 placeholder-gray-500"
                   />
                   <input
                     type="date"
@@ -205,7 +223,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   step="10"
                   value={settings.cardWidth}
                   onChange={(e) => updateSetting('cardWidth', parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
 
@@ -257,7 +275,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       step="5"
                       value={settings.bgOpacity}
                       onChange={(e) => updateSetting('bgOpacity', parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-3"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-3 accent-blue-600"
                     />
                  </div>
               </div>
@@ -272,7 +290,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   step="0.1"
                   value={settings.fontSizeScale}
                   onChange={(e) => updateSetting('fontSizeScale', parseFloat(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
             </div>
@@ -284,7 +302,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-gray-700 block">Quote Source</label>
                 <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer group">
                     <input
                       type="radio"
                       name="quoteSource"
@@ -292,9 +310,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       onChange={() => updateSetting('quoteSource', 'default')}
                       className="text-blue-600 focus:ring-blue-500"
                     />
-                    <div className="text-sm text-gray-800">Built-in</div>
+                    <div className="text-sm text-gray-800 group-hover:text-gray-900">Built-in</div>
                   </label>
-                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer group">
                     <input
                       type="radio"
                       name="quoteSource"
@@ -303,10 +321,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       className="text-blue-600 focus:ring-blue-500"
                     />
                      <div className="flex-1">
-                        <div className="text-sm text-gray-800 flex items-center gap-1">AI Generated <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Online</span></div>
+                        <div className="text-sm text-gray-800 flex items-center gap-1 group-hover:text-gray-900">AI Generated <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded">Online</span></div>
                      </div>
                   </label>
-                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer group">
                     <input
                       type="radio"
                       name="quoteSource"
@@ -314,7 +332,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       onChange={() => updateSetting('quoteSource', 'custom')}
                       className="text-blue-600 focus:ring-blue-500"
                     />
-                    <div className="text-sm text-gray-800">Custom</div>
+                    <div className="text-sm text-gray-800 group-hover:text-gray-900">Custom</div>
                   </label>
                 </div>
               </div>
@@ -327,7 +345,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       placeholder="Enter quote..."
                       value={newQuoteText}
                       onChange={(e) => setNewQuoteText(e.target.value)}
-                      className="w-full p-2 text-sm text-gray-900 border border-gray-200 rounded focus:outline-none focus:border-blue-400 min-h-[60px] placeholder-gray-400"
+                      className="w-full p-2 text-sm text-gray-900 border border-gray-200 rounded focus:outline-none focus:border-blue-400 min-h-[60px] placeholder-gray-500"
                     />
                     <button
                       onClick={handleAddQuote}
@@ -366,7 +384,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   type="checkbox"
                   checked={settings.alwaysOnTop}
                   onChange={(e) => updateSetting('alwaysOnTop', e.target.checked)}
-                  className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                  className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 accent-indigo-600"
                 />
               </div>
 
@@ -376,7 +394,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   type="checkbox"
                   checked={settings.showDate}
                   onChange={(e) => updateSetting('showDate', e.target.checked)}
-                  className="w-5 h-5 text-blue-600 rounded"
+                  className="w-5 h-5 text-blue-600 rounded accent-blue-600"
                 />
               </div>
 
@@ -386,28 +404,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   type="checkbox"
                   checked={settings.showQuote}
                   onChange={(e) => updateSetting('showQuote', e.target.checked)}
-                  className="w-5 h-5 text-blue-600 rounded"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                    <span className="text-sm font-medium text-gray-700 block">Click-Through Mode</span>
-                    <span className="text-xs text-gray-500">Ignores mouse clicks (except top-right handle)</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.isClickThrough}
-                  onChange={(e) => updateSetting('isClickThrough', e.target.checked)}
-                  className="w-5 h-5 text-blue-600 rounded"
+                  className="w-5 h-5 text-blue-600 rounded accent-blue-600"
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+        {/* Footer - No Drag */}
+        <div 
+          className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end shrink-0"
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+        >
             <button
                 onClick={() => {
                     onSettingsChange({ 
@@ -430,7 +438,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             Done
           </button>
         </div>
-      </div>
     </div>
   );
 };
