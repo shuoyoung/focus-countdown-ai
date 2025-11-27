@@ -3,7 +3,7 @@ import { Exam, WidgetSettings, Quote, Position } from './types';
 import { DEFAULT_EXAMS, DEFAULT_SETTINGS, DEFAULT_QUOTES } from './constants';
 import WidgetDisplay from './components/WidgetDisplay';
 import SettingsPanel from './components/SettingsPanel';
-import { RotateCcw, XCircle, Power } from 'lucide-react';
+import { RotateCcw, XCircle, Power, Monitor } from 'lucide-react';
 
 // Background Image for Simulation (Only used in Web Mode)
 const WALLPAPER_URL = "https://picsum.photos/1920/1080?blur=2";
@@ -75,11 +75,22 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('fc_position', JSON.stringify(position)), [position]);
   useEffect(() => localStorage.setItem('fc_current_quote', JSON.stringify(quote)), [quote]);
 
-  // --- ELECTRON EFFECTS ---
+  // --- SHORTCUTS & ELECTRON EFFECTS ---
   useEffect(() => {
+    // Global keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+        // Ctrl + Shift + R to Reset
+        if (e.ctrlKey && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+            handleResetApp();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     if (isElectron && ipcRenderer) {
       ipcRenderer.send('set-always-on-top', settings.alwaysOnTop);
     }
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [settings.alwaysOnTop, isElectron, ipcRenderer]);
 
   // Auto-resize Electron window based on content
@@ -89,9 +100,9 @@ const App: React.FC = () => {
         for (let entry of entries) {
            const width = Math.ceil(entry.contentRect.width);
            const height = Math.ceil(entry.contentRect.height);
-           // Ensure we send a reasonable size, accounting for padding/shadows if needed
+           // Add a small buffer to prevent scrollbars or clipping
            if (width > 0 && height > 0) {
-             ipcRenderer.send('resize-window', { width, height });
+             ipcRenderer.send('resize-window', { width: width, height: height });
            }
         }
       });
@@ -111,6 +122,9 @@ const App: React.FC = () => {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isSettingsOpen) {
+        // In Electron, we want to ensure we're not right-clicking the 'drag' area if possible,
+        // but if we are, the system menu might take precedence.
+        // We rely on the "no-drag" padding area for this custom menu.
         setContextMenu({ visible: true, x: e.pageX, y: e.pageY });
     }
   };
@@ -118,10 +132,10 @@ const App: React.FC = () => {
   const closeContextMenu = () => setContextMenu(null);
 
   const handleResetApp = () => {
-      localStorage.clear();
       if (ipcRenderer) {
-          ipcRenderer.send('app-relaunch');
+          ipcRenderer.send('app-reset');
       } else {
+          localStorage.clear();
           window.location.reload();
       }
   };
@@ -162,34 +176,48 @@ const App: React.FC = () => {
       if (!contextMenu) return null;
       return (
           <div 
-            className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 py-1 w-48 text-sm select-none"
+            className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 py-1 w-56 text-sm select-none"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
+            // Ensure menu itself is not draggable
+            // @ts-ignore
+            style={{ WebkitAppRegion: 'no-drag' }}
           >
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">Troubleshooting</div>
+              <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 bg-gray-50">
+                Focus Countdown
+              </div>
               <button 
                 onClick={handleResetApp}
                 className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2"
               >
-                  <RotateCcw size={14} /> Reset All Settings
+                  <RotateCcw size={14} /> Reset & Clear Cache
               </button>
+              <div className="px-4 py-1 text-xs text-gray-400">
+                Shortcut: Ctrl + Shift + R
+              </div>
               <button 
                 onClick={handleQuitApp}
                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700 flex items-center gap-2"
               >
-                  <Power size={14} /> Quit Application
+                  <Power size={14} /> Quit
               </button>
               <button 
                 onClick={closeContextMenu}
                 className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-500 flex items-center gap-2 border-t border-gray-100"
               >
-                  <XCircle size={14} /> Close Menu
+                  <XCircle size={14} /> Cancel
               </button>
+              {isElectron && (
+                <div className="px-4 py-2 bg-yellow-50 text-xs text-yellow-700 border-t border-yellow-100 flex gap-2 items-start mt-1">
+                   <Monitor size={12} className="shrink-0 mt-0.5"/> 
+                   <span>Right-click the Taskbar Tray icon for more options.</span>
+                </div>
+              )}
           </div>
       );
   };
 
-  // 1. ELECTRON MODE: Minimal container
+  // 1. ELECTRON MODE
   if (isElectron) {
     return (
       <div 
@@ -197,16 +225,18 @@ const App: React.FC = () => {
         onContextMenu={handleContextMenu}
         onClick={closeContextMenu}
         className="inline-block relative p-6"
-        // CRITICAL FIX: Windows needs a non-zero opacity surface to capture mouse events.
-        // transparent/0 opacity passes events through to desktop.
-        // 0.01 opacity is invisible to user but solid to OS.
-        style={{ backgroundColor: 'rgba(255,255,255,0.01)' }} 
+        style={{ 
+            backgroundColor: 'rgba(255,255,255,0.01)',
+            // IMPORTANT: The outer container (padding area) must NOT be draggable
+            // so that right-clicking here triggers OUR menu, not the Windows system menu.
+            WebkitAppRegion: 'no-drag' 
+        } as any} 
       >
         <ContextMenu />
         
         {isSettingsOpen ? (
           <SettingsPanel
-            isOpen={true} // Always "open" in this view
+            isOpen={true} 
             onClose={() => setIsSettingsOpen(false)}
             settings={settings}
             onSettingsChange={setSettings}
@@ -231,7 +261,7 @@ const App: React.FC = () => {
     );
   }
 
-  // 2. WEB MODE: Desktop Simulator
+  // 2. WEB MODE
   return (
     <div 
       className="relative w-screen h-screen overflow-hidden select-none font-sans"
@@ -251,6 +281,7 @@ const App: React.FC = () => {
       <div className="absolute bottom-8 left-8 z-0 text-white/50 text-xs pointer-events-none">
         <p>Focus Countdown Web Simulator</p>
         <p>Right-click widget to reset</p>
+        <p>Ctrl + Shift + R to force reset</p>
       </div>
 
       {/* Draggable Widget */}
@@ -270,7 +301,7 @@ const App: React.FC = () => {
         />
       </div>
 
-      {/* Settings Overlay (Modal style for web) */}
+      {/* Settings Overlay */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
              <SettingsPanel 

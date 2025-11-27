@@ -139,9 +139,10 @@ const WidgetDisplay: React.FC<WidgetDisplayProps> = ({
         CONTROLS
         Positioned top-right.
         Must have 'no-drag' to allow clicking in Electron.
+        UPDATED: Increased default opacity to 30 so users can find it.
       */}
       <div 
-        className="absolute -top-3 -right-3 p-4 z-[9999] flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="absolute -top-3 -right-3 p-4 z-[99999] flex gap-1.5 opacity-30 group-hover:opacity-100 transition-opacity duration-200"
         style={{ 
             pointerEvents: 'auto',
             WebkitAppRegion: 'no-drag' 
